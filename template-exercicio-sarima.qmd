@@ -466,3 +466,9 @@ Escreva 4-5 linhas comentando:
 4. A previsão pareceu razoável visualmente (captura a sazonalidade, fica bem ancorada no histórico, intervalos abrem muito com o horizonte)?
 5. Que outras UFs você imagina que dariam um SARIMA bem diferente do seu (e por quê)? Pense em estados de regiões diferentes, com perfil econômico distinto.
 
+1. Respondido na seção 1.3.
+2. Respondido na seção 4.
+3. Respondido na seção 5.
+4. Sim. A previsão mantém a sazonalidade (cai no começo do ano, pico em dezembro) e segue do último nível da série, sem salto. Os intervalos abrem com o tempo, o que é esperado para previsão mais distantes.
+5. Acredito que estados com perfis econômicos diferentes de MG dariam outro SARIMA, principalmente porque o PMC é um indicador do varejo. Estados com dependência de outras atividades (turismo, agronegócio, indústria), a sazonalidade esperada deve se manifestar em outros picos.
+
