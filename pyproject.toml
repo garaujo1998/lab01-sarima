@@ -1,0 +1,21 @@
+[project]
+name = "lab01-sarima"
+version = "0.1.0"
+description = "Exercício lab01: SARIMA na PMC (Minas Gerais)"
+authors = [
+    { name = "Gabriel Araujo", email = "gabrielaraujo1698@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "ipykernel>=7.4.0",
+    "jupyter>=1.1.1",
+    "matplotlib>=3.11.2",
+    "numpy>=2.5.3",
+    "pandas>=3.0.5",
+    "requests>=2.34.2",
+    "statsforecast>=2.0.1",
+    "statsmodels>=0.15.0",
+]
+
+[tool.uv]
+package = false
