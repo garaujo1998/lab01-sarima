@@ -8,7 +8,6 @@ jupyter: python3
 ## Bibliotecas
 
 ```{python}
-#| execution: {iopub.execute_input: '2026-10-28T21:21:56.518081Z', iopub.status.busy: '2026-10-28T21:21:56.517876Z', iopub.status.idle: '2026-10-28T21:21:58.166511Z', shell.execute_reply: '2026-10-28T21:21:58.165813Z'}
 import pandas as pd
 import numpy as np
 import requests
@@ -18,6 +17,8 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 from statsmodels.tsa.stattools import adfuller
 from statsmodels.stats.diagnostic import acorr_ljungbox
 from statsmodels.tsa.arima_process import ArmaProcess
+from statsmodels.tsa.stattools import kpss
+from statsforecast.arima import ndiffs, nsdiffs
 import warnings
 warnings.filterwarnings('ignore')
 ```
@@ -25,7 +26,6 @@ warnings.filterwarnings('ignore')
 ## Parâmetros para Gráficos
 
 ```{python}
-#| execution: {iopub.execute_input: '2026-10-28T21:21:58.171119Z', iopub.status.busy: '2026-10-28T21:21:58.170983Z', iopub.status.idle: '2026-10-28T21:21:58.173397Z', shell.execute_reply: '2026-10-28T21:21:58.172980Z'}
 RED,BLUE,GREEN,GRAY,YELLOW='#E4002B','#1a6fc4','#1a9b57','#555555','#cc8800'
 
 plt.style.use('default')
@@ -45,19 +45,16 @@ plt.rcParams.update({
 A base já foi pré-processada para conter apenas as colunas relevantes, e já no formato "long" (uma linha por data + UF). O nome da coluna de data é "data", e a coluna de interesse (índice de volume) é "volume_idx". A coluna "uf" indica a Unidade da Federação.
 
 ```{python}
-#| execution: {iopub.execute_input: '2026-10-28T21:21:58.174612Z', iopub.status.busy: '2026-10-28T21:21:58.174541Z', iopub.status.idle: '2026-10-28T21:21:58.344290Z', shell.execute_reply: '2026-10-28T21:21:58.343589Z'}
 pmc = pd.read_csv("https://github.com/padsInsper/202634-fa/releases/download/data/pmc_volume_uf.csv")
 ```
 
 ## Escolha sua UF
 
 ```{python}
-#| execution: {iopub.execute_input: '2026-10-28T21:21:58.346014Z', iopub.status.busy: '2026-10-28T21:21:58.345919Z', iopub.status.idle: '2026-10-28T21:21:58.347823Z', shell.execute_reply: '2026-10-28T21:21:58.347362Z'}
 MINHA_UF = 'Minas Gerais'
 ```
 
 ```{python}
-#| execution: {iopub.execute_input: '2026-10-28T21:21:58.349020Z', iopub.status.busy: '2026-10-28T21:21:58.348941Z', iopub.status.idle: '2026-10-28T21:21:58.370685Z', shell.execute_reply: '2026-10-28T21:21:58.370339Z'}
 df_sf = (
     pmc.query("uf == @MINHA_UF")
     .rename(columns={"uf": "unique_id", "data": "ds", "volume_idx": "y"})
@@ -71,19 +68,16 @@ df_sf.head()
 ## Preparação da série
 
 ```{python}
-#| execution: {iopub.execute_input: '2026-10-28T21:21:58.371820Z', iopub.status.busy: '2026-10-28T21:21:58.371766Z', iopub.status.idle: '2026-10-28T21:21:58.377393Z', shell.execute_reply: '2026-10-28T21:21:58.377038Z'}
 df_sf = df_sf.set_index('ds')
 df_sf.index = pd.to_datetime(df_sf.index)
 df_sf.head()
 ```
 
 ```{python}
-#| execution: {iopub.execute_input: '2026-10-28T21:21:58.378430Z', iopub.status.busy: '2026-10-28T21:21:58.378373Z', iopub.status.idle: '2026-10-28T21:21:58.380048Z', shell.execute_reply: '2026-10-28T21:21:58.379499Z'}
 col = df_sf.columns[0]
 ```
 
 ```{python}
-#| execution: {iopub.execute_input: '2026-10-28T21:21:58.381555Z', iopub.status.busy: '2026-10-28T21:21:58.381503Z', iopub.status.idle: '2026-10-28T21:21:58.384460Z', shell.execute_reply: '2026-10-28T21:21:58.384164Z'}
 # Crio defasagem e 1ª diferença
 df_sf['y_lag1'] = df_sf['y'].shift(1)
 df_sf['y_diff1'] = df_sf['y'].diff(1)
@@ -94,13 +88,11 @@ diff2 = df_sf['y_diff2'].dropna()
 ```
 
 ```{python}
-#| execution: {iopub.execute_input: '2026-10-28T21:21:58.385411Z', iopub.status.busy: '2026-10-28T21:21:58.385363Z', iopub.status.idle: '2026-10-28T21:21:58.386918Z', shell.execute_reply: '2026-10-28T21:21:58.386527Z'}
 # Diferenciação sazonal - Variação mensal menos a de 12 meses antes
 df_sf['y_diff_sazonalidade'] = df_sf['y_diff1'].diff(12)
 ```
 
 ```{python}
-#| execution: {iopub.execute_input: '2026-10-28T21:21:58.387653Z', iopub.status.busy: '2026-10-28T21:21:58.387608Z', iopub.status.idle: '2026-10-28T21:21:58.390711Z', shell.execute_reply: '2026-10-28T21:21:58.390455Z'}
 df_sf
 ```
 
@@ -115,7 +107,6 @@ Iniciando com um processo de inspeção visual, observa-se:
 4. Uma recuperação gradual a partir de 2020, com o índice atingindo e superando o patamar de referência (média de 2022 = 100).
 
 ```{python}
-#| execution: {iopub.execute_input: '2026-10-28T21:21:58.391779Z', iopub.status.busy: '2026-10-28T21:21:58.391725Z', iopub.status.idle: '2026-10-28T21:21:58.492307Z', shell.execute_reply: '2026-10-28T21:21:58.491634Z'}
 fig, ax = plt.subplots(figsize=(13, 6))
 
 ax.plot(df_sf.index, df_sf['y'], color=RED, lw=1.4)
@@ -145,7 +136,6 @@ Adicionalmente, verifica-se que:
 3. O gráfico de **resíduo** aponta para choques pontuais, com destaque para a crise de 2008 (menor impacto) e, principalmente, a COVID em 2020.
 
 ```{python}
-#| execution: {iopub.execute_input: '2026-10-28T21:21:58.493690Z', iopub.status.busy: '2026-10-28T21:21:58.493627Z', iopub.status.idle: '2026-10-28T21:21:58.669975Z', shell.execute_reply: '2026-10-28T21:21:58.669628Z'}
 # Utilizo a decomposição aditiva porque a diferença entre os picos e vales da série original se mantêm constantes ao longo do tempo.
 
 decomp = seasonal_decompose(df_sf['y'], model='additive', period=12)
@@ -168,8 +158,13 @@ plt.show()
 
 ## 1.3 Autocorrelação da série em nível
 
+Na figura abaixo, observa-se que o ACF decai lentamente e que várias autocorrelações estão fora do intervalo de confiança. Dessa forma, **a série não pode ser classificada apenas ruído branco**. Observam-se picos nos lags 12 e 24, e quedas acentuadas nos lags 6 e 18, o que indica um padrão de sazonalidade a ser explorado nas próximas seções.
+
+No PACF, o lag 1 é muito dominante em relação a todos os demais. Próximo ao lag 12, observa-se novamente uma concentração de pontos fugindo do intervalo de confiança.
+
+Conclui-se, portanto, que **é necessário estacionarizar a série**.
+
 ```{python}
-#| execution: {iopub.execute_input: '2026-10-28T21:21:58.671395Z', iopub.status.busy: '2026-10-28T21:21:58.671315Z', iopub.status.idle: '2026-10-28T21:21:58.821718Z', shell.execute_reply: '2026-10-28T21:21:58.821325Z'}
 fig, axes = plt.subplots(1, 3, figsize=(13, 4))
 
 axes[0].plot(df_sf.index, df_sf[col], color=RED, lw=1.4)
@@ -180,9 +175,6 @@ plot_acf(df_sf[col], ax=axes[1], lags=24, zero=False, title=f'ACF PMC em Nível 
 axes[1].set_xlabel('Lag (meses)')
 axes[1].axvline(12, color=GREEN, lw=1, ls='--', alpha=0.8)
 axes[1].axvline(24, color=GREEN, lw=1, ls='--', alpha=0.8)
-# A diferenca está fora da zona sombreada, logo não é apenas ruído branco
-# Observam-se movimentos positivos em 12 e 24, e de maior queda em 6 e 18
-# É necessário estacionar a série
 
 plot_pacf(df_sf[col], ax=axes[2], lags=24, zero=False, title=f'PACF PMC em Nível ({MINHA_UF})')
 axes[2].set_xlabel('Lag (meses)')
@@ -195,14 +187,11 @@ plt.tight_layout()
 plt.show()
 ```
 
-> ✏️ **A fazer:** interpretar o ACF e o PACF do nível (decaimento do ACF, lag 1 do PACF, picos sazonais em 12/24, necessidade de estacionarizar).
-
 # 2. Testes de raiz unitária
 
 ## 2.1 ADF
 
 ```{python}
-#| execution: {iopub.execute_input: '2026-10-28T21:21:58.823200Z', iopub.status.busy: '2026-10-28T21:21:58.823129Z', iopub.status.idle: '2026-10-28T21:21:58.825437Z', shell.execute_reply: '2026-10-28T21:21:58.825065Z'}
 def rodar_adf(serie, nome):
     """Teste ADF com resultado formatado."""
     serie = serie.dropna()
@@ -223,7 +212,6 @@ def rodar_adf(serie, nome):
 ```
 
 ```{python}
-#| execution: {iopub.execute_input: '2026-10-28T21:21:58.826413Z', iopub.status.busy: '2026-10-28T21:21:58.826350Z', iopub.status.idle: '2026-10-28T21:21:58.833232Z', shell.execute_reply: '2026-10-28T21:21:58.832850Z'}
 p1 = rodar_adf(df_sf['y']                   ,f'PMC ({MINHA_UF}), Nível')
 p3 = rodar_adf(df_sf['y_diff1']             ,f'PMC ({MINHA_UF}), Diff')
 p2 = rodar_adf(df_sf['y_diff_sazonalidade'] ,f'PMC ({MINHA_UF}), Diff + Diff Sazonal')
@@ -232,24 +220,54 @@ p2 = rodar_adf(df_sf['y_diff_sazonalidade'] ,f'PMC ({MINHA_UF}), Diff + Diff Saz
 ## 2.2 KPSS
 
 ```{python}
-#| execution: {iopub.execute_input: '2026-10-28T21:21:58.834183Z', iopub.status.busy: '2026-10-28T21:21:58.834117Z', iopub.status.idle: '2026-10-28T21:21:58.835541Z', shell.execute_reply: '2026-10-28T21:21:58.835165Z'}
-# A fazer: teste KPSS (nível, 1ª diferença, diferença + diferença sazonal)
-```
+def rodar_kpss(serie, nome):
+    """Teste KPSS com resultado formatado (H₀: série estacionária)."""
+    serie = serie.dropna()
+    res = kpss(serie, regression='c', nlags='auto')
+    conclusao = "⚠️  Rejeita H₀ → NÃO ESTACIONÁRIA" if res[1] < 0.05 else "✅ Não rejeita H₀ → ESTACIONÁRIA"
+    print(f"{'='*50}")
+    print(f"KPSS: {nome}")
+    print(f"{'='*50}")
+    print(f"  Estatística KPSS: {res[0]:.4f}")
+    print(f"  p-value         : {res[1]:.4f}")
+    print(f"  Lags usados     : {res[2]}")
+    print(f"  Valores críticos:")
+    for nivel, valor in res[3].items():
+        print(f"    {nivel}: {valor:.4f}")
+    print(f"  → {conclusao}\n")
+    return res[1]
 
-> ✏️ **A fazer:** interpretar o KPSS (atenção: H₀ é estacionariedade, o contrário do ADF).
+k1 = rodar_kpss(df_sf['y']                   ,f'PMC ({MINHA_UF}), Nível')
+k2 = rodar_kpss(df_sf['y_diff1']             ,f'PMC ({MINHA_UF}), Diff')
+k3 = rodar_kpss(df_sf['y_diff_sazonalidade'] ,f'PMC ({MINHA_UF}), Diff + Diff Sazonal')
+```
 
 ## 2.3 Número de diferenças (`ndiffs` / `nsdiffs`)
 
 ```{python}
-#| execution: {iopub.execute_input: '2026-10-28T21:21:58.836432Z', iopub.status.busy: '2026-10-28T21:21:58.836382Z', iopub.status.idle: '2026-10-28T21:21:58.837739Z', shell.execute_reply: '2026-10-28T21:21:58.837402Z'}
-# A fazer: ndiffs e nsdiffs
+y = df_sf['y'].values
+
+D = nsdiffs(y, period=12)                       # diferenças sazonais necessárias
+y_saz = y[12:] - y[:-12] if D > 0 else y        # aplica a diferença sazonal, se indicada
+d = ndiffs(y_saz)                               # diferenças regulares após a sazonal
+
+print(f"Diferenças sazonais (D): {D}")
+print(f"Diferenças regulares (d): {d}")
 ```
 
-> ✏️ **A fazer:** conclusão dos testes: quantas diferenças regulares (d) e sazonais (D) são necessárias?
+## 2.4 Comentário sobre os testes de raiz unitária
+
+Como antecipado na análise descritiva, a série em nível não é estacionária.
+
+O **ADF não rejeita a hipótese de raiz unitária** e o **KPSS rejeita a hipótese de estacionariedade**. O **ndiffs** e o **nsdiffs** indicam que a série precisa de 1 diferença normal e 1 sazonal para estacionarizar a série, o que é feito a seguir.
 
 # 3. Diferenciação
 
 ## 3.1 1ª diferença
+
+Aplico a 1a diferença para remover a tendência discutida anteriormente. Agora, o ACF não decai mais lentamente como no nível, mas a sazonalidade continua marcante nos picos dos lags 12 e 24, tanto no ACF quanto no PACF.
+
+Ainda é preciso aplicar a diferença sazonal para estacionarizar a série, como indicado pelo nsdiffs.
 
 ```{python}
 #| execution: {iopub.execute_input: '2026-10-28T21:21:58.838752Z', iopub.status.busy: '2026-10-28T21:21:58.838706Z', iopub.status.idle: '2026-10-28T21:21:58.968495Z', shell.execute_reply: '2026-10-28T21:21:58.967766Z'}
@@ -281,9 +299,9 @@ plt.tight_layout()
 plt.show()
 ```
 
-> ✏️ **A fazer:** interpretar: o que a 1ª diferença removeu e o que ainda permanece (sazonalidade).
-
 ## 3.2 Diferença sazonal (série estacionarizada)
+
+Observa-se, por fim, que tanto a ACF quanto a PACF estão mais comportadas, com resquícios leves de sazonalidade no lag 12, que vão decaindo nos lags seguintes, com o lag 24 já dentro do intervalo de confiança (faixa azul).
 
 ```{python}
 #| execution: {iopub.execute_input: '2026-10-28T21:21:58.969954Z', iopub.status.busy: '2026-10-28T21:21:58.969874Z', iopub.status.idle: '2026-10-28T21:21:59.063565Z', shell.execute_reply: '2026-10-28T21:21:59.063159Z'}
@@ -309,6 +327,13 @@ plt.tight_layout(); plt.show()
 - ACF: Há apenas uma medição que sai da faixa azul. Chuto, portanto, Q=1.
 - PACF: Há apenas uma medição que sai da faixa azul (lag12). Chuto, portanto, P=1.
 
+**Modelo SARIMA proposto:**
+- p = 2
+- q = 1
+- d = 1
+- P = 1
+- Q = 1
+- D = 1
 
 # 4. Ajuste do SARIMA (AutoARIMA)
 
@@ -368,7 +393,11 @@ else:
     print("(Resíduos não disponíveis nesta versão do statsforecast)")
 ```
 
-> ✏️ **A fazer:** interpretar os resíduos (ACF, distribuição, Ljung-Box).
+**Observações:**
+- Os resíduos oscilam em torno de zero sem padrão claro ao longo do tempo. O maior desvio fica perto da faixa do COVID, que o modelo não tinha como prever.
+- A distribuição é aproximadamente simétrica e centrada em zero.
+- No ACF, todos os lags ficam dentro do intervalo de confiança, confirmando a retirada do padrão sazonal em relação à série orignial.
+- Por fim, o Ljung-Box (p = 0,19) não rejeita H0, indicando que os resíduos se comportam como ruído branco e o modelo capturou bem a estrutura da série.
 
 # 6. Previsão: 24 meses à frente
 
