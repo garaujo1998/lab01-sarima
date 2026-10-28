@@ -337,6 +337,12 @@ plt.tight_layout(); plt.show()
 
 # 4. Ajuste do SARIMA (AutoARIMA)
 
+O AutoARIMA escolheu o modelo **SARIMA(3,1,2)(1,1,1)[12]**.
+
+As diferenças (d = 1 e D = 1) e a parte sazonal (P = 1, Q = 1) batem exatamente com o que foi proposto via análise descritiva e de testes unitários.
+
+Na parte não sazonal, o modelo escolheu p = 3 e q = 2, enquanto minha proposta era p = 2 e q = 1. O modelo do AutoARIMA é um pouco mais complexo, mas a minha proposta estava direcionalmente certa, já que identificou a presença de AR e MA, mas ficou abaixo na ordem.
+
 ```{python}
 #| execution: {iopub.execute_input: '2026-10-28T21:21:59.065115Z', iopub.status.busy: '2026-10-28T21:21:59.065036Z', iopub.status.idle: '2026-10-28T21:22:03.460366Z', shell.execute_reply: '2026-10-28T21:22:03.459553Z'}
 from statsforecast import StatsForecast
@@ -364,9 +370,13 @@ print(f"   BIC  : {modelo['bic']:.3f}")
 print(f"   sigma: {modelo['sigma2']**0.5:.4f}")
 ```
 
-> ✏️ **A fazer:** comparar o modelo escolhido pelo AutoARIMA com a proposta manual (p, q, P, Q) e com o d/D indicado pelos testes.
-
 # 5. Diagnóstico dos resíduos
+
+**Observações:**
+- Os resíduos oscilam em torno de zero sem padrão claro ao longo do tempo. O maior desvio fica perto da faixa do COVID, que o modelo não tinha como prever.
+- A distribuição é aproximadamente simétrica e centrada em zero.
+- No ACF, todos os lags ficam dentro do intervalo de confiança, confirmando a retirada do padrão sazonal em relação à série orignial.
+- Por fim, o Ljung-Box (p = 0,19) não rejeita H0, indicando que os resíduos se comportam como ruído branco e o modelo capturou bem a estrutura da série.
 
 ```{python}
 #| execution: {iopub.execute_input: '2026-10-28T21:22:03.464423Z', iopub.status.busy: '2026-10-28T21:22:03.463981Z', iopub.status.idle: '2026-10-28T21:22:03.618161Z', shell.execute_reply: '2026-10-28T21:22:03.617804Z'}
@@ -392,12 +402,6 @@ if len(residuos) > 10:
 else:
     print("(Resíduos não disponíveis nesta versão do statsforecast)")
 ```
-
-**Observações:**
-- Os resíduos oscilam em torno de zero sem padrão claro ao longo do tempo. O maior desvio fica perto da faixa do COVID, que o modelo não tinha como prever.
-- A distribuição é aproximadamente simétrica e centrada em zero.
-- No ACF, todos os lags ficam dentro do intervalo de confiança, confirmando a retirada do padrão sazonal em relação à série orignial.
-- Por fim, o Ljung-Box (p = 0,19) não rejeita H0, indicando que os resíduos se comportam como ruído branco e o modelo capturou bem a estrutura da série.
 
 # 6. Previsão: 24 meses à frente
 
@@ -452,8 +456,6 @@ ax.legend(fontsize=9); ax.grid(True)
 plt.tight_layout(); plt.show()
 ```
 
-> ✏️ **A fazer:** comentar a previsão (sazonalidade, ancoragem no histórico, abertura dos intervalos).
-
 # 7. Discussão
 
 Escreva 4-5 linhas comentando:
@@ -463,14 +465,4 @@ Escreva 4-5 linhas comentando:
 3. Os resíduos parecem white noise? Algum padrão remanescente sazonal?
 4. A previsão pareceu razoável visualmente (captura a sazonalidade, fica bem ancorada no histórico, intervalos abrem muito com o horizonte)?
 5. Que outras UFs você imagina que dariam um SARIMA bem diferente do seu (e por quê)? Pense em estados de regiões diferentes, com perfil econômico distinto.
-
-> ✏️ **A fazer:** resposta à pergunta 1.
-
-> ✏️ **A fazer:** resposta à pergunta 2.
-
-> ✏️ **A fazer:** resposta à pergunta 3.
-
-> ✏️ **A fazer:** resposta à pergunta 4.
-
-> ✏️ **A fazer:** resposta à pergunta 5.
 

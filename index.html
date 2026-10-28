@@ -2897,6 +2897,9 @@ Diferenças regulares (d): 1</code></pre>
 </section>
 <section id="ajuste-do-sarima-autoarima" class="level1">
 <h1>4. Ajuste do SARIMA (AutoARIMA)</h1>
+<p>O AutoARIMA escolheu o modelo <strong>SARIMA(3,1,2)(1,1,1)[12]</strong>.</p>
+<p>As diferenças (d = 1 e D = 1) e a parte sazonal (P = 1, Q = 1) batem exatamente com o que foi proposto via análise descritiva e de testes unitários.</p>
+<p>Na parte não sazonal, o modelo escolheu p = 3 e q = 2, enquanto minha proposta era p = 2 e q = 1. O modelo do AutoARIMA é um pouco mais complexo, mas a minha proposta estava direcionalmente certa, já que identificou a presença de AR e MA, mas ficou abaixo na ordem.</p>
 <div id="1c7acded-0531-4cf4-840f-6ca1c398ce89" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-10-28T21:21:59.065115Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-10-28T21:21:59.065036Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-10-28T21:22:03.460366Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-10-28T21:22:03.459553Z&quot;}}" data-execution_count="20">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> statsforecast <span class="im">import</span> StatsForecast</span>
 <span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> statsforecast.models <span class="im">import</span> AutoARIMA</span>
@@ -2928,12 +2931,10 @@ Diferenças regulares (d): 1</code></pre>
    sigma: 3.3765</code></pre>
 </div>
 </div>
-<blockquote class="blockquote">
-<p>✏️ <strong>A fazer:</strong> comparar o modelo escolhido pelo AutoARIMA com a proposta manual (p, q, P, Q) e com o d/D indicado pelos testes.</p>
-</blockquote>
 </section>
 <section id="diagnóstico-dos-resíduos" class="level1">
 <h1>5. Diagnóstico dos resíduos</h1>
+<p><strong>Observações:</strong> - Os resíduos oscilam em torno de zero sem padrão claro ao longo do tempo. O maior desvio fica perto da faixa do COVID, que o modelo não tinha como prever. - A distribuição é aproximadamente simétrica e centrada em zero. - No ACF, todos os lags ficam dentro do intervalo de confiança, confirmando a retirada do padrão sazonal em relação à série orignial. - Por fim, o Ljung-Box (p = 0,19) não rejeita H0, indicando que os resíduos se comportam como ruído branco e o modelo capturou bem a estrutura da série.</p>
 <div id="d8b0235a-13a7-4164-a834-6345f395c29e" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;execution&quot;,&quot;value&quot;:{&quot;iopub.execute_input&quot;:&quot;2026-10-28T21:22:03.464423Z&quot;,&quot;iopub.status.busy&quot;:&quot;2026-10-28T21:22:03.463981Z&quot;,&quot;iopub.status.idle&quot;:&quot;2026-10-28T21:22:03.618161Z&quot;,&quot;shell.execute_reply&quot;:&quot;2026-10-28T21:22:03.617804Z&quot;}}" data-execution_count="21">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Diagnóstico: resíduos do modelo SARIMA</span></span>
 <span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>residuos <span class="op">=</span> pd.Series(modelo.get(<span class="st">&#39;residuals&#39;</span>, []))</span>
@@ -2968,7 +2969,6 @@ Diferenças regulares (d): 1</code></pre>
 ✅ Resíduos são ruído branco!</code></pre>
 </div>
 </div>
-<p><strong>Observações:</strong> - Os resíduos oscilam em torno de zero sem padrão claro ao longo do tempo. O maior desvio fica perto da faixa do COVID, que o modelo não tinha como prever. - A distribuição é aproximadamente simétrica e centrada em zero. - No ACF, todos os lags ficam dentro do intervalo de confiança, confirmando a retirada do padrão sazonal em relação à série orignial. - Por fim, o Ljung-Box (p = 0,19) não rejeita H0, indicando que os resíduos se comportam como ruído branco e o modelo capturou bem a estrutura da série.</p>
 </section>
 <section id="previsão-24-meses-à-frente" class="level1">
 <h1>6. Previsão: 24 meses à frente</h1>
@@ -3033,9 +3033,6 @@ Diferenças regulares (d): 1</code></pre>
 </div>
 </div>
 </div>
-<blockquote class="blockquote">
-<p>✏️ <strong>A fazer:</strong> comentar a previsão (sazonalidade, ancoragem no histórico, abertura dos intervalos).</p>
-</blockquote>
 </section>
 <section id="discussão" class="level1">
 <h1>7. Discussão</h1>
@@ -3047,21 +3044,6 @@ Diferenças regulares (d): 1</code></pre>
 <li>A previsão pareceu razoável visualmente (captura a sazonalidade, fica bem ancorada no histórico, intervalos abrem muito com o horizonte)?</li>
 <li>Que outras UFs você imagina que dariam um SARIMA bem diferente do seu (e por quê)? Pense em estados de regiões diferentes, com perfil econômico distinto.</li>
 </ol>
-<blockquote class="blockquote">
-<p>✏️ <strong>A fazer:</strong> resposta à pergunta 1.</p>
-</blockquote>
-<blockquote class="blockquote">
-<p>✏️ <strong>A fazer:</strong> resposta à pergunta 2.</p>
-</blockquote>
-<blockquote class="blockquote">
-<p>✏️ <strong>A fazer:</strong> resposta à pergunta 3.</p>
-</blockquote>
-<blockquote class="blockquote">
-<p>✏️ <strong>A fazer:</strong> resposta à pergunta 4.</p>
-</blockquote>
-<blockquote class="blockquote">
-<p>✏️ <strong>A fazer:</strong> resposta à pergunta 5.</p>
-</blockquote>
 </section>
 
 </main>
